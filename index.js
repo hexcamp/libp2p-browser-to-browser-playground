@@ -108,6 +108,14 @@ const isWebrtc = (ma) => {
   return ma.protoCodes().includes(WEBRTC_CODE)
 }
 
+window.connect_relay.onclick = async () => {
+  const ma = multiaddr('/dns4/hexcamp-libp2p-webrtc-relay.quick.cluster-4.localnet.farm/tcp/443/wss/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN')
+  appendOutput(`Dialing '${ma}'`)
+  const connection = await node.dial(ma)
+
+  appendOutput(`Connected to '${ma}'`)
+}
+
 window.connect.onclick = async () => {
   const ma = multiaddr(window.peer.value)
   appendOutput(`Dialing '${ma}'`)
