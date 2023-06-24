@@ -1,42 +1,40 @@
-import { multiaddr, protocols } from "@multiformats/multiaddr"
-import { pipe } from "it-pipe"
-import { fromString, toString } from "uint8arrays"
-import { webRTC } from "@libp2p/webrtc"
-import { webSockets } from "@libp2p/websockets"
-import * as filters from "@libp2p/websockets/filters"
-import { pushable } from "it-pushable"
-import { mplex } from "@libp2p/mplex"
-import { createLibp2p } from "libp2p"
+import { multiaddr, protocols } from '@multiformats/multiaddr'
+import { pipe } from 'it-pipe'
+import { fromString, toString } from 'uint8arrays'
+import { webRTC } from '@libp2p/webrtc'
+import { webSockets } from '@libp2p/websockets'
+import * as filters from '@libp2p/websockets/filters'
+import { pushable } from 'it-pushable'
+import { mplex } from '@libp2p/mplex'
+import { createLibp2p } from 'libp2p'
 import { circuitRelayTransport } from 'libp2p/circuit-relay'
-import { noise } from "@chainsafe/libp2p-noise"
+import { noise } from '@chainsafe/libp2p-noise'
 import { identifyService } from 'libp2p/identify'
 
 const WEBRTC_CODE = protocols('webrtc').code
 
-const output = document.getElementById("output")
-const sendSection = document.getElementById("send-section")
-const appendOutput = (line) => {
-  const div = document.createElement("div")
+const output = document.getElementById('output')
+const sendSection = document.getElementById('send-section')
+const appendOutput = line => {
+  const div = document.createElement('div')
   div.appendChild(document.createTextNode(line))
   output.append(div)
 }
-const clean = (line) => line.replaceAll("\n", "")
+const clean = line => line.replaceAll('\n', '')
 const sender = pushable()
 
 const node = await createLibp2p({
   addresses: {
-    listen: [
-      '/webrtc'
-    ]
+    listen: ['/webrtc']
   },
   transports: [
     webSockets({
-      filter: filters.all,
+      filter: filters.all
     }),
     webRTC(),
     circuitRelayTransport({
-      discoverRelays: 1,
-    }),
+      discoverRelays: 1
+    })
   ],
   connectionEncryption: [noise()],
   streamMuxers: [mplex()],
@@ -57,7 +55,7 @@ const node = await createLibp2p({
 await node.start()
 
 // handle the echo protocol
-await node.handle("/echo/1.0.0", ({ stream }) => {
+await node.handle('/echo/1.0.0', ({ stream }) => {
   pipe(
     stream,
     async function* (source) {
@@ -71,47 +69,63 @@ await node.handle("/echo/1.0.0", ({ stream }) => {
   )
 })
 
-function updateConnList() {
+function updateConnList () {
   // Update connections list
-  const connListEls = node.getConnections()
-    .map((connection) => {
-      if (connection.remoteAddr.protoCodes().includes(WEBRTC_CODE)) {
-        sendSection.style.display = "block"
-      }
+  const connListEls = node.getConnections().map(connection => {
+    if (connection.remoteAddr.protoCodes().includes(WEBRTC_CODE)) {
+      sendSection.style.display = 'block'
+    }
 
-      const el = document.createElement("li")
-      el.textContent = connection.remoteAddr.toString()
-      return el
-    })
-  document.getElementById("connections").replaceChildren(...connListEls)
+    const el = document.createElement('li')
+    el.textContent = connection.remoteAddr.toString()
+    return el
+  })
+  document.getElementById('connections').replaceChildren(...connListEls)
 }
 
-node.addEventListener("connection:open", (event) => {
+node.addEventListener('connection:open', event => {
+  console.log('Jim connection:open', event)
   updateConnList()
-})
-node.addEventListener("connection:close", (event) => {
-  updateConnList()
-})
-
-node.addEventListener("self:peer:update", (event) => {
-  // Update multiaddrs list
-  const multiaddrs = node.getMultiaddrs()
-    .map((ma) => {
-      const el = document.createElement("li")
-      el.textContent = ma.toString()
-      return el
+  const connection = event.detail
+  async function run () {
+    const outgoing_stream = await connection.newStream(['/echo/1.0.0'])
+    pipe(sender, outgoing_stream, async src => {
+      for await (const buf of src) {
+        const response = toString(buf.subarray())
+        appendOutput(`Received echo reply '${clean(response)}'`)
+      }
     })
-  document.getElementById("multiaddrs").replaceChildren(...multiaddrs)
+  }
+  if (isWebrtc(connection.remoteAddr)) {
+    run()
+  }
+})
+node.addEventListener('connection:close', event => {
+  console.log('Jim connection:close', event)
+  updateConnList()
 })
 
-const isWebrtc = (ma) => {
+node.addEventListener('self:peer:update', event => {
+  console.log('Jim self:peer:update', event)
+  // Update multiaddrs list
+  const multiaddrs = node.getMultiaddrs().map(ma => {
+    const el = document.createElement('li')
+    el.textContent = ma.toString()
+    return el
+  })
+  document.getElementById('multiaddrs').replaceChildren(...multiaddrs)
+})
+
+const isWebrtc = ma => {
   return ma.protoCodes().includes(WEBRTC_CODE)
 }
 
 window.connect_relay.onclick = async () => {
-  const ma = multiaddr('/dns4/hexcamp-libp2p-webrtc-relay.quick.cluster-4.localnet.farm/tcp/443/wss/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN')
+  const ma = multiaddr(
+    '/dns4/hexcamp-libp2p-webrtc-relay.quick.cluster-4.localnet.farm/tcp/443/wss/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN'
+  )
   appendOutput(`Dialing '${ma}'`)
-  const connection = await node.dial(ma)
+  await node.dial(ma)
 
   appendOutput(`Connected to '${ma}'`)
 }
@@ -122,11 +136,11 @@ window.connect.onclick = async () => {
   const connection = await node.dial(ma)
 
   if (isWebrtc(ma)) {
-    const outgoing_stream = await connection.newStream(["/echo/1.0.0"])
-    pipe(sender, outgoing_stream, async (src) => {
+    const outgoing_stream = await connection.newStream(['/echo/1.0.0'])
+    pipe(sender, outgoing_stream, async src => {
       for await (const buf of src) {
         const response = toString(buf.subarray())
-        appendOutput(`Received message '${clean(response)}'`)
+        appendOutput(`Received echo reply '${clean(response)}'`)
       }
     })
   }
