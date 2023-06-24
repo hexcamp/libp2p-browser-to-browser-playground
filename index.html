@@ -30,6 +30,18 @@
         <input type="text" id="peer" />
         <button id="connect">Connect</button>
       </div>
+      <div id="publish-section">
+        <label for="publish_text">Publish Text:</label>
+        <input type="text" id="publish_text" value="Hello from Helia" />
+        <button id="publish">Publish</button>
+        <div id="publish_cid"></div>
+      </div>
+      <div id="retrieve-section">
+        <label for="retrieve_cid">Retrieve CID:</label>
+        <input type="text" id="retrieve_cid" value="" />
+        <button id="retrieve">Retrieve</button>
+        <div id="retrieve_result"></div>
+      </div>
       <div id="send-section">
         <label for="message">Message:</label>
         <input type="text" id="message" value="hello" />

@@ -10,6 +10,11 @@ import { createLibp2p } from 'libp2p'
 import { circuitRelayTransport } from 'libp2p/circuit-relay'
 import { noise } from '@chainsafe/libp2p-noise'
 import { identifyService } from 'libp2p/identify'
+import { MemoryBlockstore } from 'blockstore-core'
+import { MemoryDatastore } from 'datastore-core'
+import { createHelia } from 'helia'
+import { unixfs } from '@helia/unixfs'
+import { CID } from 'multiformats/cid'
 
 const WEBRTC_CODE = protocols('webrtc').code
 
@@ -53,6 +58,20 @@ const node = await createLibp2p({
 })
 
 await node.start()
+
+// the blockstore is where we store the blocks that make up files
+const blockstore = new MemoryBlockstore()
+
+// application-specific data lives in the datastore
+const datastore = new MemoryDatastore()
+
+const helia = await createHelia({
+  datastore,
+  blockstore,
+  libp2p: node
+})
+
+const fs = unixfs(helia)
 
 // handle the echo protocol
 await node.handle('/echo/1.0.0', ({ stream }) => {
@@ -146,6 +165,41 @@ window.connect.onclick = async () => {
   }
 
   appendOutput(`Connected to '${ma}'`)
+}
+
+window.publish.onclick = async () => {
+  const text = window.publish_text.value
+
+  const encoder = new TextEncoder()
+
+  try {
+    const cid = await fs.addBytes(encoder.encode(text), helia.blockstore)
+    console.log('Added file:', cid.toString())
+    appendOutput(`Published '${text}', CID: ${cid.toString()}`)
+    window.publish_cid.innerText = `CID: ${cid.toString()}`
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+window.retrieve.onclick = async () => {
+  const cid = CID.parse(window.retrieve_cid.value)
+
+  const decoder = new TextDecoder()
+
+  let text = ''
+  try {
+    console.log('Downloading', cid)
+    for await (const chunk of fs.cat(cid)) {
+      text += decoder.decode(chunk, {
+        stream: true
+      })
+    }
+    console.log('Decoded text:', text)
+    window.retrieve_result.innerText = text
+  } catch (e) {
+    console.error(e)
+  }
 }
 
 window.send.onclick = async () => {
