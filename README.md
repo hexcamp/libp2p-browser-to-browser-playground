@@ -1,3 +1,9 @@
+# libp2p-browser-to-browser-playground
+
+* Demo: https://wkgrvqgfj4.hex.camp/
+* Related demos: https://wkgrvqgfl4.hex.camp/
+* Based on: https://github.com/libp2p/js-libp2p/tree/master/examples/libp2p-in-the-browser/webrtc/browser-to-browser
+
 # js-libp2p-webrtc Browser to Browser
 
 This example leverages the [vite bundler](https://vitejs.dev/) to compile and serve the libp2p code in the browser. You can use other bundlers such as Webpack, but we will not be covering them here.
